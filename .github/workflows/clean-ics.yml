@@ -1,0 +1,46 @@
+yaml
+name: ICS Datei bereinigen
+
+on:
+  push:
+    paths:
+      - '*.ics'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Repository laden
+        uses: actions/checkout@v4
+Tonne.ics
+      - name: VALARM entfernen und Datum formatieren
+        run: |
+          python3 -c '
+          import re, glob
+Tonne.ics
+          for file in glob.glob("*.ics"):
+              with open(file, "r", encoding="utf-8") as f:
+                  text = f.read()
+
+              # 1. VALARM Bloecke komplett entfernen
+              text = re.sub(r"BEGIN:VALARM.*?END:VALARM\r?\n?", "", text, flags=re.DOTALL)
+
+              # 2. DTSTART und DTEND in Ganztagesformat (VALUE=DATE) wandeln
+              text = re.sub(r"DTSTART;TZID=[^:]+:(\d{8})T\d{6}", r"DTSTART;VALUE=DATE:\1", text)
+              text = re.sub(r"DTEND;TZID=[^:]+:(\d{8})T\d{6}", r"DTEND;VALUE=DATE:\1", text)
+
+              with open(file, "w", encoding="utf-8", newline="\r\n") as f:
+                  f.write(text)
+          '
+
+      - name: Bereinigte Datei speichern
+        run: |
+          git config user.name "GitHub Action"
+          git config user.email "action@github.com"
+          git add *.ics
+          git diff --staged --quiet || git commit -m "ICS automatisch fuer Gira X1 bereinigt"
+          git push
